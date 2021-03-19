@@ -1,0 +1,118 @@
+---
+title: "Congressional Text Analytics"
+author: "Ryan Janson"
+date: "3/19/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+
+Installing and loading packages
+```{r packages}
+install.packages("text2vec")
+install.packages("sentimentr")
+install.packages("tidytext")
+install.packages("textdata")
+library(readtext)
+library(quanteda)
+library(text2vec)
+library(sentimentr)
+library(tidytext)
+library(textdata)
+library(readxl)
+```
+
+After downloading the text files from the Stanford site, we will create some text documents for our analysis. These include dataframes, document frequency matrices(DFM), and corpus objects.
+```{r}
+# Read in the speaker map and text
+speaker_list <- c('109_SpeakerMap.txt','110_SpeakerMap.txt','111_SpeakerMap.txt',
+                  '112_SpeakerMap.txt','113_SpeakerMap.txt')
+speeches_list <- c('speeches_109.txt','speeches_110.txt','speeches_111.txt',
+                   'speeches_112.txt','speeches_113.txt')
+description_list <- c('descr_109.txt','descr_110.txt','descr_111.txt','descr_112.txt',
+                      'descr_113.txt')
+
+#reset tables when necessary
+cr_speaker <- data.frame()
+cr_speeches <- data.frame()
+cr_descr <- data.frame()
+cr_merged_pre <- data.frame()
+cr_merged <- data.frame()
+
+cr_speaker <- read.table("~/R/Legal Analytics/Project Files/108_SpeakerMap.txt", header = TRUE, sep = "|")
+cr_speeches <- read.table("~/R/Legal Analytics/Project Files/speeches_108.txt", header = TRUE, sep = "|",
+                        na.strings=".", quote="", fill = TRUE)
+cr_descr <- read.table("~/R/Legal Analytics/Project Files/descr_108.txt", header = TRUE, sep = "|")
+
+#Create tables from Stanford files
+
+for (i in speaker_list)
+{
+  cr_speaker <- bind_rows(cr_speaker,read.table(paste('~/R/Legal Analytics/Project Files/',i,sep = ""), header = TRUE, sep = "|"))
+}
+
+for (i in speeches_list)
+{
+  cr_speeches <- rbind(cr_speeches,read.table(paste('~/R/Legal Analytics/Project Files/',i,sep = ""),header = TRUE, sep = "|",
+                                              na.strings=".", quote="", fill = TRUE))
+}
+
+for (i in description_list)
+{
+  cr_descr <- merge(cr_descr,read.table(paste('~/R/Legal Analytics/Project Files/',i,sep = ""), header = TRUE, sep = "|"),all = TRUE)
+}
+
+# Merge on speech_id
+cr_merged_pre <- merge(cr_speaker,cr_speeches, by = "speech_id")
+cr_merged_fin <- merge(cr_merged_pre,cr_descr, by = "speech_id")
+
+#filter out party = P - this is a small party that isn't necessary for our analysis
+main_df <- filter(cr_merged_fin, party != 'P')
+
+#for this analysis we only need the file_id and text elements
+cr_txt <- main_df[, c("file", "speech")]
+
+```
+
+View the table we have built thus far
+```{r}
+View(cr_txt)
+```
+
+
+Next we create a corpus using the speech text as our corpus element. Keep in mind these next few steps may take a long time to process. The code is working through a lot of text data.
+```{r}
+#creating a corpus
+cr_corpus <- corpus(cr_txt,text = 'speech')
+```
+
+This step tokenizes the speeches in the corpus. 
+```{r}
+cr_toks <- tokens(cr_corpus)
+```
+
+
+```{r}
+cr_dfm <- dfm(cr_corpus)
+```
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
